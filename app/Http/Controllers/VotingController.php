@@ -24,6 +24,7 @@ class VotingController extends Controller
         Vote::create([
             'judul' => $request->judul,
             'deskripsi' => $request->deskripsi,
+            'user_id' => Auth::id() // Simpan ID pembuat
         ]);
         
         return back()->with('success', 'Voting baru berhasil dibuat!');
@@ -31,6 +32,11 @@ class VotingController extends Controller
     
     public function submit(Request $request, Vote $vote)
     {
+        // Hanya izinkan voting jika masih aktif
+        if ($vote->status !== 'active') {
+            return back()->with('error', 'Voting ini sudah selesai!');
+        }
+
         $request->validate([
             'vote' => 'required|in:setuju,tidak'
         ]);
@@ -54,5 +60,14 @@ class VotingController extends Controller
         $vote->delete();
         return back()->with('success', 'Voting berhasil dihapus!');
     }
-}
 
+    public function complete(Vote $vote)
+    {
+        if (Auth::id() !== $vote->user_id && !Auth::user()->is_admin) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $vote->update(['status' => 'completed']);
+        return back()->with('success', 'Voting telah diselesaikan!');
+    }
+}

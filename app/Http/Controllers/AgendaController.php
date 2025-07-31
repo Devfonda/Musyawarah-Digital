@@ -10,31 +10,40 @@ class AgendaController extends Controller
 {
     public function index()
     {
-        $agendas = Agenda::all();
+        // Tambahkan eager loading untuk relasi minute
+        $agendas = Agenda::with('minute')->latest()->get();
         return view('agenda.index', compact('agendas'));
     }
 
     public function store(Request $request)
     {
+        $request->validate([
+            'judul' => 'required|string|max:255',
+            'deskripsi' => 'required|string',
+            'tanggal' => 'required|date',
+            'waktu' => 'required',
+            'tempat' => 'required|string|max:255',
+            'status' => 'required|in:aktif,selesai',
+        ]);
 
-    $request->validate([
-        'judul' => 'required|string|max:255',
-        'deskripsi' => 'required|string',
-        'tanggal' => 'required|date',
-        'waktu' => 'required',
-        'tempat' => 'required|string|max:255',
-        'status' => 'required|in:aktif,selesai',
-    ]);
+        Agenda::create($request->all());
 
-    Agenda::create([
-        'judul' => $request->judul,
-        'deskripsi' => $request->deskripsi,
-        'tanggal' => $request->tanggal,
-        'waktu' => $request->waktu,
-        'tempat' => $request->tempat,
-        'status' => $request->status,
-    ]);
+        return redirect()->route('agenda')
+            ->with('success', 'Agenda berhasil ditambahkan!');
+    }
 
-    return redirect()->back()->with('success', 'Agenda berhasil disimpan!');
+    public function destroy(Agenda $agenda)
+    {
+        // Hanya agenda selesai yang bisa dihapus
+        if ($agenda->status !== 'selesai') {
+            return redirect()->route('agenda')
+                ->with('error', 'Hanya agenda yang sudah selesai yang dapat dihapus');
+        }
+
+        // Hapus agenda
+        $agenda->delete();
+
+        return redirect()->route('agenda')
+            ->with('success', 'Agenda berhasil dihapus');
     }
 }

@@ -14,7 +14,8 @@ class Vote extends Model
         'deskripsi',
         'setuju',
         'tidak_setuju',
-        'user_id' // Pastikan kolom user_id ada
+        'user_id',
+        'status' // Tambahkan status
     ];
 
     public function total()
@@ -22,9 +23,14 @@ class Vote extends Model
         return $this->setuju + $this->tidak_setuju;
     }
 
-    // Relasi ke user (pembuat voting)
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    // Method untuk mengecek apakah voting sudah selesai
+    public function isCompleted()
+    {
+        return $this->status === 'completed';
     }
 }

@@ -32,6 +32,12 @@
         </div>
     @endif
     
+    @if(session('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            {{ session('error') }}
+        </div>
+    @endif
+    
     @if(session('message'))
         <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-6">
             {{ session('message') }}
@@ -42,7 +48,13 @@
         @forelse($votes as $vote)
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-2">{{ $vote->judul }}</h3>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">{{ $vote->judul }}</h3>
+                    <span class="px-3 py-1 text-sm rounded-full 
+                              {{ $vote->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                        {{ $vote->status === 'active' ? 'Aktif' : 'Selesai' }}
+                    </span>
+                </div>
                 <p class="text-gray-600 mb-4">{{ $vote->deskripsi }}</p>
                 
                 <div class="flex space-x-4 mb-6">
@@ -69,6 +81,7 @@
                     </div>
                 </div>
                 
+                @if($vote->status === 'active')
                 <form method="POST" action="{{ route('voting.submit', $vote) }}">
                     @csrf
                     <div class="flex space-x-4">
@@ -82,9 +95,35 @@
                         </button>
                     </div>
                 </form>
+                @endif
+                
+                <!-- Tombol Aksi untuk Pembuat/Admin -->
+                <div class="mt-4 flex space-x-3">
+                    @if(Auth::id() == $vote->user_id || (Auth::check() && Auth::user()->is_admin))
+                        @if($vote->status === 'active')
+                        <form action="{{ route('voting.complete', $vote) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition text-sm">
+                                Tandai Selesai
+                            </button>
+                        </form>
+                        @endif
+                        
+                        <form action="{{ route('voting.destroy', $vote) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" 
+                                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm"
+                                    onclick="return confirm('Apakah Anda yakin ingin menghapus voting ini?')">
+                                Hapus Voting
+                            </button>
+                        </form>
+                    @endif
+                </div>
             </div>
             <div class="bg-gray-50 px-6 py-3 text-sm text-gray-500">
-                Dibuat: {{ $vote->created_at->format('d M Y H:i') }} | Total Suara: {{ $vote->total() }}
+                Dibuat: {{ $vote->created_at->format('d M Y H:i') }} | 
+                Total Suara: {{ $vote->total() }}
             </div>
         </div>
         @empty

@@ -104,9 +104,12 @@
             <x-responsive-nav-link :href="route('chat')" :active="request()->routeIs('chat')">
                 {{ __('Room Chat') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('agenda')" :active="request()->routeIs('agenda')">
+            <x-nav-link :href="route('agenda')" :active="request()->routeIs('agenda.*')">
                 {{ __('Agenda') }}
-            </x-responsive-nav-link>
+            </x-nav-link>
+            <x-nav-link :href="route('minutes.index')" :active="request()->routeIs('minutes.*')">
+                 {{ __('Notulen') }}
+            </x-nav-link>
             <x-responsive-nav-link :href="route('voting')" :active="request()->routeIs('voting')">
                 {{ __('Voting') }}
             </x-responsive-nav-link>

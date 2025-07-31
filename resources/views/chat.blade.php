@@ -4,7 +4,7 @@
 <div class="max-w-4xl mx-auto py-10 px-4">
     <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-[600px]">
         <!-- Header -->
-        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center">
+        <div class="bg-red-600 px-6 py-4 flex justify-between items-center">
             <h2 class="text-xl font-bold text-white">💬 Chat Room Musyawarah</h2>
             <div class="flex items-center">
                 <div class="w-3 h-3 rounded-full bg-green-400 mr-2"></div>
@@ -31,7 +31,7 @@
                 </div>
                 <div class="px-4 py-3 rounded-2xl max-w-[80%] 
                     {{ $message->user_id == auth()->id() ? 
-                       'bg-indigo-500 text-white rounded-br-none' : 
+                       'bg-red-500 text-white rounded-br-none' : 
                        'bg-white border border-gray-200 rounded-bl-none' }}">
                     {{ $message->message }}
                 </div>
@@ -45,7 +45,7 @@
             <input type="text" id="message" name="message" autocomplete="off" 
                    placeholder="Ketik pesan..." 
                    class="flex-1 border border-gray-300 rounded-l-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300" />
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-r-xl flex items-center">
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-r-xl flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
@@ -84,17 +84,19 @@
     channel.bind('pusher:member_removed', member => {
         document.getElementById('online-count').textContent = channel.members.count;
     });
-    
-    // Tangkap pesan baru
-    channel.bind('App\\Events\\NewChatMessage', data => {
+
+    // Fungsi untuk menambahkan pesan ke UI
+    function addMessageToUI(data, isLocal = false) {
         const now = new Date();
-        const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+        const time = isLocal 
+            ? now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0')
+            : new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        const isMe = data.user.id == {{ auth()->id() }};
+        const isMe = isLocal || data.user.id == {{ auth()->id() }};
         const alignClass = isMe ? 'items-end' : '';
-        const bgClass = isMe ? 
-            'bg-indigo-500 text-white rounded-br-none' : 
-            'bg-white border border-gray-200 rounded-bl-none';
+        const bgClass = isMe 
+            ? 'bg-red-500 text-white rounded-br-none' 
+            : 'bg-white border border-gray-200 rounded-bl-none';
         const name = isMe ? 'Anda' : data.user.name;
         
         const messageHTML = `
@@ -123,15 +125,24 @@
         // Scroll ke bawah
         const chat = document.getElementById('chat-messages');
         chat.scrollTop = chat.scrollHeight;
-    });
+    }
 
-    // Kirim pesan via AJAX
+    // Kirim pesan via AJAX dan tampilkan langsung
     document.getElementById('chat-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        const message = document.getElementById('message').value.trim();
+        const messageInput = document.getElementById('message');
+        const message = messageInput.value.trim();
         
         if(message === '') return;
         
+        // Tampilkan pesan langsung di UI
+        addMessageToUI({
+            message: message,
+            user: { id: {{ auth()->id() }} },
+            created_at: new Date().toISOString()
+        }, true);
+        
+        // Kirim ke server
         fetch('{{ route("chat.send") }}', {
             method: 'POST',
             headers: {
@@ -140,11 +151,26 @@
             },
             body: JSON.stringify({ message })
         })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('message').value = '';
-            document.getElementById('message').focus();
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal mengirim pesan');
+            }
+            messageInput.value = '';
+            messageInput.focus();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Tampilkan notifikasi error
+            alert('Gagal mengirim pesan: ' + error.message);
         });
+    });
+
+    // Tangkap pesan baru dari Pusher
+    channel.bind('App\\Events\\NewChatMessage', data => {
+        // Hanya tampilkan jika bukan pesan dari diri sendiri
+        if(data.user.id !== {{ auth()->id() }}) {
+            addMessageToUI(data);
+        }
     });
 
     // Scroll ke bawah saat halaman dimuat
